@@ -74,25 +74,28 @@ export function useFilters() {
         };
       }
 
-      // 1) Basic quality & photometric gates (defensive about undefineds)
-      const pre = stars.filter((s) => {
-        // duplicates
-        if (filters.excludeDuplicates && s.duplicated_source === true) return false;
+    // 1) Basic quality & photometric gates (only check when value is present)
+    const pre = stars.filter((s) => {
+      // duplicates
+      if (filters.excludeDuplicates && s.duplicated_source === true) return false;
 
-        // RUWE
-        if (!lteFinite(s.ruwe, filters.ruweMax)) return false;
+      // RUWE (only if present)
+      if (isFiniteSafe(s.ruwe) && !lteFinite(s.ruwe, filters.ruweMax)) return false;
 
-        // visibility periods
-        if (!gteFinite(s.visibility_periods_used, filters.minVisibilityPeriods)) return false;
+      // visibility periods (only if present)
+      if (
+        isFiniteSafe(s.visibility_periods_used) &&
+        !gteFinite(s.visibility_periods_used, filters.minVisibilityPeriods)
+      ) return false;
 
-        // G mag
-        if (!lteFinite(s.phot_g_mean_mag, filters.gMax)) return false;
+      // G mag (only if present)
+      if (isFiniteSafe(s.phot_g_mean_mag) && !lteFinite(s.phot_g_mean_mag, filters.gMax)) return false;
 
-        // color window
-        if (!withinFinite(s.bp_rp, filters.colorMin, filters.colorMax)) return false;
+      // color window (only if present)
+      if (isFiniteSafe(s.bp_rp) && !withinFinite(s.bp_rp, filters.colorMin, filters.colorMax)) return false;
 
-        return true;
-      });
+      return true;
+    });
 
       // 2) Inner-core subset for centroid (require finite RA/Dec here only)
       const coreIdx = pre.filter((s) => {
@@ -108,7 +111,7 @@ export function useFilters() {
       // 3) Robust diagonal sigmas from the prefiltered set
       const sig = robustSigmas(pre, centerPM, filters.useParallax);
 
-      // 4) Kinematic keep (Mahalanobis distance with diagonal covariance)
+      // 4) Kinematic keep (let stars without PM/parallax pass)
       const k2 = filters.kSigma * filters.kSigma;
       const kinKept = pre.filter((s) => {
         const d2 = mahalanobisDiag(
@@ -121,7 +124,8 @@ export function useFilters() {
           sig,
           filters.useParallax
         );
-        return d2 !== undefined && d2 <= k2;
+        if (d2 === undefined) return true;           // ← allow if kinematics missing
+        return d2 <= k2;
       });
 
       // 5) Optional radial velocity window

@@ -1,0 +1,26 @@
+// backend/cluster_lists.json  (short sample; you can expand later)
+{
+  "Messier": [
+    {"name":"M2","type":"GCl"}, {"name":"M3","type":"GCl"},
+    {"name":"M4","type":"GCl"}, {"name":"M5","type":"GCl"},
+    {"name":"M6","type":"OpC"}, {"name":"M7","type":"OpC"},
+    {"name":"M11","type":"OpC"}, {"name":"M13","type":"GCl"},
+    {"name":"M15","type":"GCl"}, {"name":"M16","type":"Cl+N"},
+    {"name":"M35","type":"OpC"}, {"name":"M36","type":"OpC"},
+    {"name":"M37","type":"OpC"}, {"name":"M38","type":"OpC"}
+  ],
+  "Caldwell": [
+    {"name":"C41 Hyades","type":"OpC"},
+    {"name":"C94 NGC 4755","aka":"Jewel Box","type":"OpC"}
+  ],
+  "Melotte": [
+    {"name":"Mel 25 Hyades","type":"OpC"},
+    {"name":"Mel 22 Pleiades","type":"OpC"},
+    {"name":"Mel 13 h Persei","type":"OpC"},
+    {"name":"Mel 14 χ Persei","type":"OpC"}
+  ],
+  "Terzan": [
+    {"name":"Terzan 1","type":"GCl"},
+    {"name":"Terzan 5","type":"GCl"}
+  ]
+}

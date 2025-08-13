@@ -5,7 +5,8 @@ import SkyPlot from './components/SkyPlot';
 import StarsPreview from './components/StarsPreview';
 import Modal from './components/Modal';
 import FiltersPanel from './components/FiltersPanel';
-import { useFilters, defaultFilters } from './hooks/useFilters';
+import HRDiagram from './components/HRDiagram';
+import { useFilters } from './hooks/useFilters';
 import type { GaiaConeResponse } from './types';
 import './index.css';
 
@@ -22,7 +23,7 @@ export default function App() {
   const [showTable, setShowTable] = useState(false);
 
   // Filters hook
-  const { filters, setFilters, applyFilters, recommended, resetFilters } = useFilters();
+  const { filters, setFilters, applyFilters, recommended } = useFilters();
 
   // Recompute filtered stars whenever raw data or filters change
   const result = useMemo(() => {
@@ -33,13 +34,17 @@ export default function App() {
   const filteredStars = result?.filtered ?? [];
   const stats = result?.stats;
 
-  async function fetchStars() {
+  async function fetchStars(nameOverride?: string) {
+    const t = (nameOverride ?? target).trim();
+    if (!t) {
+      setError('Please enter or select a target name.');
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      const url = `${BACKEND}/api/gaia-cone?name=${encodeURIComponent(
-        target
-      )}&radius_arcmin=${encodeURIComponent(fov)}`;
+      const url = `${BACKEND}/api/gaia-cone?name=${encodeURIComponent(t)}&radius_arcmin=${encodeURIComponent(fov)}&limit=0`;
+
       const res = await fetch(url);
       if (!res.ok) {
         const detail = await safeDetail(res);
@@ -55,8 +60,11 @@ export default function App() {
     }
   }
 
+  // When a target is selected from the picker (Controls will call onFetch)
+  const handleFetch = () => fetchStars();
+
   return (
-    <div style={{ width: 1100, maxWidth: '100%', margin: '0 auto', padding: '1.5rem' }}>
+    <div style={{ width: 1400, maxWidth: '100%', margin: '0 auto', padding: '1.5rem' }}>
       <h1 style={{ marginBottom: '1rem' }}>Astro Cluster Viewer</h1>
 
       {/* Target & FoV controls */}
@@ -66,7 +74,7 @@ export default function App() {
         fov={fov}
         setFov={setFov}
         loading={loading}
-        onFetch={fetchStars}
+        onFetch={handleFetch}
       />
 
       {/* Filters panel (has its own enable/live toggles + info modals) */}
@@ -129,7 +137,7 @@ export default function App() {
         )}
 
         {data && (
-          <div style={{ marginTop: '0.75rem', display: 'grid', gap: '0.75rem' }}>
+          <div style={{ marginTop: '0.75rem', display: 'grid', gap: '1rem' }}>
             {/* Summary row */}
             <div
               style={{
@@ -142,42 +150,42 @@ export default function App() {
               }}
             >
               <span>
-                Target <strong>{data.target.name}</strong> (
-                {data.target.ra.toFixed(5)}, {data.target.dec.toFixed(5)})
+                Target <strong>{data.target.name}</strong> ({data.target.ra.toFixed(5)}, {data.target.dec.toFixed(5)})
                 &nbsp;| FoV {data.radius_arcmin.toFixed(1)}′
                 &nbsp;| Stars: total <strong>{data.count.toLocaleString()}</strong>, filtered{' '}
                 <strong>{filteredStars.length.toLocaleString()}</strong>
               </span>
             </div>
 
-            {/* Plot (uses filtered stars) */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr',
-                gap: '1rem',
-                alignItems: 'start',
-              }}
-            >
+            {/* Plots: SkyPlot + HRDiagram */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', alignItems: 'start' }}>
               <SkyPlot data={{ ...data, stars: filteredStars }} fovArcmin={data.radius_arcmin} />
+              <HRDiagram
+                stars={filteredStars}
+                title={`H–R Diagram — ${data.target.name}`}
+                width={520}
+                height={520}
+                xRange={[-0.5, 4.0]}
+                yRange={[10.0, 21.0]} // reversed order (bright at top) inside component
+              />
             </div>
 
             {/* Optional kinematic stats */}
             {stats && (
               <div style={{ fontSize: 12, color: '#aaa' }}>
                 Kinematic center μ = (
-                {typeof stats.center.pmra === 'number' && Number.isFinite(stats.center.pmra)
+                {typeof stats.center?.pmra === 'number' && Number.isFinite(stats.center.pmra)
                   ? stats.center.pmra.toFixed(2)
                   : '—'}
                 ,{' '}
-                {typeof stats.center.pmdec === 'number' && Number.isFinite(stats.center.pmdec)
+                {typeof stats.center?.pmdec === 'number' && Number.isFinite(stats.center.pmdec)
                   ? stats.center.pmdec.toFixed(2)
                   : '—'}
                 ) mas/yr
-                {typeof stats.center.parallax === 'number' && Number.isFinite(stats.center.parallax) ? (
+                {typeof stats.center?.parallax === 'number' && Number.isFinite(stats.center.parallax) ? (
                   <> , π ≈ {stats.center.parallax.toFixed(3)} mas</>
                 ) : null}
-                &nbsp; | core N = {stats.center.nCore}
+                {typeof stats.nCore === 'number' ? <> | core N = {stats.nCore}</> : null}
               </div>
             )}
           </div>
